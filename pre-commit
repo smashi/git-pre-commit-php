@@ -1,0 +1,125 @@
+#!/bin/bash
+#
+# Check whether a commit would introduce errors
+#
+# Checks for
+#     * PHP syntax errors
+#     * Leftover conflict markers
+#     * Twig syntax errors
+#
+# Use this script as a pre-commit hook in Git. For automatic deployment
+# please put this file into $HOME/.git_template/hooks and /etc/skel.
+#
+# Author: Hakan Kuecuekyilamz, <hakan at lisas dot de>, 2011-10-21.
+
+# All but (D)eleted
+GIT_OPTIONS='diff-index --cached --full-index --diff-filter=ACMRTUXB'
+
+ERR=0
+
+# Which checks to run
+CHECK_PHP=1
+CHECK_MERGE=1
+CHECK_TWIG=1
+
+#
+# Check for PHP syntax errors
+#
+if [ "$CHECK_PHP" = "1" ]; then
+    RET1=$(git $GIT_OPTIONS HEAD | grep -E '.(php)$' | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
+
+                TMP=$(git cat-file -p $NEW_HASH | php -l 2> /dev/null)
+                if [ $? -ne 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET1" != '' ]; then
+        echo "[ERROR]: At least one of your PHP file has a syntax error."
+        echo "  Please check your file(s) with php -l for syntax errors,"
+        echo "  fix them, and try again!"
+        echo
+        echo "$RET1"
+        echo
+
+        ERR=1
+    fi
+fi
+
+#
+# Check for files with merge conflict markers
+#
+if [ "$CHECK_MERGE" = "1" ]; then
+    RET2=$(git $GIT_OPTIONS HEAD | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
+
+                TMP=$(git cat-file -p $NEW_HASH | grep -E '^(<<<<<<<|>>>>>>>)' > /dev/null 2>&1)
+                if [ $? -eq 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET2" != '' ];then
+        echo "[ERROR]: At least one of your files has merge conflict markers."
+        echo "  Please check your file(s) for <<<<<<< and/or >>>>>>>,"
+        echo "  fix your merge conflict(s), and try again!"
+        echo
+        echo "$RET2"
+        echo
+
+        ERR=2
+    fi
+fi
+
+#
+# Check for files with Twig syntax errors
+#
+if [ "$CHECK_TWIG" = "1" ]; then
+    RET3=$(git $GIT_OPTIONS HEAD | grep -E '.(twig)$' | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
+
+                TMP=$(git cat-file -p $NEW_HASH | php app/console twig:lint > /dev/null 2>&1)
+                if [ $? -ne 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET3" != '' ];then
+        echo "[ERROR]: At least one of your TWIG files has a syntax error."
+        echo "  Please check your file(s) with php app/console twig:lint for syntax errors,"
+        echo "  fix them, and try again!"
+        echo
+        echo "$RET3"
+        echo
+
+        ERR=3
+    fi
+fi
+
+
+exit $ERR
