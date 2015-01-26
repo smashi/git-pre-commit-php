@@ -21,6 +21,7 @@ ERR=0
 CHECK_PHP=1
 CHECK_MERGE=1
 CHECK_TWIG=1
+CHECK_OUTPUT=1
 
 #
 # Check for PHP syntax errors
@@ -121,5 +122,36 @@ if [ "$CHECK_TWIG" = "1" ]; then
     fi
 fi
 
+#
+# Check for files with output stuff (var_dump, var_export, xdebug_break)
+#
+if [ "$CHECK_OUTPUT" = "1" ]; then
+    RET2=$(git $GIT_OPTIONS HEAD | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
 
+                TMP=$(git cat-file -p $NEW_HASH | grep -E 'var_(dump|export)|xdebug_break' > /dev/null 2>&1)
+                if [ $? -eq 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET2" != '' ];then
+        echo "[ERROR]: At least one of your files has an debug output."
+        echo "  Please check your file(s) for var_dump, var_export, or xdebug_break"
+        echo "  fix your files, and try again!"
+        echo
+        echo "$RET2"
+        echo
+
+        ERR=2
+    fi
+fi
 exit $ERR
