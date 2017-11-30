@@ -22,6 +22,9 @@ CHECK_PHP=1
 CHECK_MERGE=1
 CHECK_TWIG=1
 CHECK_OUTPUT=1
+CHECK_COMMIT=1
+CHECK_INTERNAL=1
+CHECK_DOCBLOCK=1
 
 #
 # Check for PHP syntax errors
@@ -154,4 +157,89 @@ if [ "$CHECK_OUTPUT" = "1" ]; then
         ERR=2
     fi
 fi
+
+#
+# Check if somewhere $commit = true
+#
+if [ "$CHECK_COMMIT" = "1" ]; then
+    RET5=$(git $GIT_OPTIONS HEAD | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
+
+                TMP=$(git cat-file -p $NEW_HASH | grep -E '\$commit\s*=\s*(true|TRUE)' > /dev/null 2>&1)
+                if [ $? -eq 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET5" != '' ];then
+        echo "[ERROR]: At least one of your files has \$commit = true."
+        echo "  Please check your file(s) for \$commit = true"
+        echo "  fix your files, and try again!"
+        echo
+        echo "$RET5"
+        echo
+
+        ERR=2
+    fi
+fi
+
+#
+# Check if somewhere @internal is used
+#
+if [ "$CHECK_INTERNAL" = "1" ]; then
+    RET5=$(git $GIT_OPTIONS HEAD | {
+            while read i; do
+                OLD_MODE='field 1' # Not used
+                NEW_MODE='field 2' # Not used
+                OLD_HASH='field 3' # Not used
+                NEW_HASH=$(echo $i | awk '{ print $4 }')
+                STATUS='field 5'   # Not used
+                FILE_NAME=$(echo $i | awk '{ print $6 }')
+
+                TMP=$(git cat-file -p $NEW_HASH | grep -E '@internal' > /dev/null 2>&1)
+                if [ $? -eq 0 ]; then
+                    echo '  '$FILE_NAME
+                fi
+            done
+         }
+    )
+
+    if [ "$RET5" != '' ];then
+        echo "[ERROR]: At least one of your files has @internal."
+        echo "  Please check your file(s) for @internal"
+        echo "  fix your files, and try again!"
+        echo
+        echo "$RET5"
+        echo
+
+        ERR=2
+    fi
+fi
+
+#
+# Check if somewhere the docblock is not well formated
+#
+if [ "$CHECK_DOCBLOCK" = "1" ]; then
+    RET6=$(git grep --color '^*\s*@')
+
+    if [ "$RET6" != '' ];then
+        echo "[ERROR]: At least one of your files has not well formated dockblock."
+        echo "  Please check your file(s) for @internal"
+        echo "  fix your files, and try again!"
+        echo
+        echo "$RET6"
+        echo
+
+        ERR=2
+    fi
+fi
+
 exit $ERR
