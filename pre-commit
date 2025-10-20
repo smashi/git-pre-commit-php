@@ -2,15 +2,13 @@
 #
 # Check whether a commit would introduce errors
 #
-# Checks for
-#     * PHP syntax errors
-#     * Leftover conflict markers
-#     * Twig syntax errors
-#
 # Use this script as a pre-commit hook in Git. For automatic deployment
 # please put this file into $HOME/.git_template/hooks and /etc/skel.
-#
-# Author: Hakan Kuecuekyilmaz, <hakan at lisas dot de>, 2011-10-21.
+
+# Please note that we are testing the files in the index,
+# which are going to be commited. So simply testing the
+# files in your working dir will not have the desired effect.
+# Think of git add --interactive where only parts are added.
 
 # All but (D)eleted
 GIT_OPTIONS='diff-index --cached --full-index --diff-filter=ACMRTUXB'
@@ -80,7 +78,7 @@ if [ "$CHECK_MERGE" = "1" ]; then
          }
     )
 
-    if [ "$RET2" != '' ];then
+    if [ "$RET2" != '' ]; then
         echo "[ERROR]: At least one of your files has merge conflict markers."
         echo "  Please check your file(s) for <<<<<<< and/or >>>>>>>,"
         echo "  fix your merge conflict(s), and try again!"
@@ -113,7 +111,7 @@ if [ "$CHECK_TWIG" = "1" ]; then
          }
     )
 
-    if [ "$RET3" != '' ];then
+    if [ "$RET3" != '' ]; then
         echo "[ERROR]: At least one of your TWIG files has a syntax error."
         echo "  Please check your file(s) with php app/console twig:lint for syntax errors,"
         echo "  fix them, and try again!"
@@ -129,7 +127,7 @@ fi
 # Check for files with output stuff (var_dump, var_export, xdebug_break)
 #
 if [ "$CHECK_OUTPUT" = "1" ]; then
-    RET2=$(git $GIT_OPTIONS HEAD | {
+    RET4=$(git $GIT_OPTIONS HEAD | {
             while read i; do
                 OLD_MODE='field 1' # Not used
                 NEW_MODE='field 2' # Not used
@@ -146,15 +144,15 @@ if [ "$CHECK_OUTPUT" = "1" ]; then
          }
     )
 
-    if [ "$RET2" != '' ];then
+    if [ "$RET4" != '' ]; then
         echo "[ERROR]: At least one of your files has an debug output."
         echo "  Please check your file(s) for var_dump, var_export, or xdebug_break"
         echo "  fix your files, and try again!"
         echo
-        echo "$RET2"
+        echo "$RET4"
         echo
 
-        ERR=2
+        ERR=4
     fi
 fi
 
@@ -179,7 +177,7 @@ if [ "$CHECK_COMMIT" = "1" ]; then
          }
     )
 
-    if [ "$RET5" != '' ];then
+    if [ "$RET5" != '' ]; then
         echo "[ERROR]: At least one of your files has \$commit = true."
         echo "  Please check your file(s) for \$commit = true"
         echo "  fix your files, and try again!"
@@ -187,7 +185,7 @@ if [ "$CHECK_COMMIT" = "1" ]; then
         echo "$RET5"
         echo
 
-        ERR=2
+        ERR=5
     fi
 fi
 
@@ -195,7 +193,7 @@ fi
 # Check if somewhere @internal is used
 #
 if [ "$CHECK_INTERNAL" = "1" ]; then
-    RET5=$(git $GIT_OPTIONS HEAD | {
+    RET6=$(git $GIT_OPTIONS HEAD | {
             while read i; do
                 OLD_MODE='field 1' # Not used
                 NEW_MODE='field 2' # Not used
@@ -212,15 +210,15 @@ if [ "$CHECK_INTERNAL" = "1" ]; then
          }
     )
 
-    if [ "$RET5" != '' ];then
+    if [ "$RET6" != '' ]; then
         echo "[ERROR]: At least one of your files has @internal."
         echo "  Please check your file(s) for @internal"
         echo "  fix your files, and try again!"
         echo
-        echo "$RET5"
+        echo "$RET6"
         echo
 
-        ERR=2
+        ERR=6
     fi
 fi
 
@@ -228,17 +226,17 @@ fi
 # Check if somewhere the docblock is not well formated
 #
 if [ "$CHECK_DOCBLOCK" = "1" ]; then
-    RET6=$(git grep --color '^*\s*@')
+    RET7=$(git grep --color '^*\s*@')
 
-    if [ "$RET6" != '' ];then
+    if [ "$RET7" != '' ]; then
         echo "[ERROR]: At least one of your files has not well formated dockblock."
-        echo "  Please check your file(s) for @internal"
+        echo "  Please check your file(s) for docblock formatting errors."
         echo "  fix your files, and try again!"
         echo
-        echo "$RET6"
+        echo "$RET7"
         echo
 
-        ERR=2
+        ERR=7
     fi
 fi
 
